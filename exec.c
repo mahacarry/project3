@@ -6,6 +6,17 @@
 #include "defs.h"
 #include "x86.h"
 #include "elf.h"
+#include "spinlock.h"
+#include "sleeplock.h"
+#include "fs.h"
+#include "file.h"
+
+struct {
+	struct spinlock lock;
+	struct proc proc[NPROC];
+	
+} ptable;
+
 
 int
 exec(char *path, char **argv)
@@ -17,7 +28,26 @@ exec(char *path, char **argv)
   struct inode *ip;
   struct proghdr ph;
   pde_t *pgdir, *oldpgdir;
-  struct proc *curproc = myproc();
+  struct proc *curproc = myproc(), *p;
+
+  acquire(&ptable.lock);
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->pid == curproc->pid && p->tid == curproc->tid)
+      continue;
+    if(p->pid == curproc->pid && p->tid != curproc->tid){
+      kfree(p->kstack);
+      p->kstack = 0;
+      p->pid = 0;
+      p->parent = 0;
+      p->name[0] = 0;
+      p->killed = 0;
+      p->state = UNUSED;
+
+      p->isT = 0;
+      p->tid = -1;
+    }
+  }
+  release(&ptable.lock);  
 
   begin_op();
 
