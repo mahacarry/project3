@@ -194,9 +194,6 @@ thread_create(thread_t *thread, void *(*start_routine)(void *), void *arg)	//che
 	
   	safestrcpy(np->name, curproc->name, sizeof(curproc->name));
   	
-	pushcli();
-  	lcr3(V2P(np->pgdir));
-  	popcli();
 
 	np->state = RUNNABLE;
 	release(&ptable.lock);
